@@ -72,7 +72,9 @@ export default function App() {
         setMonthData(meals);
       } catch (err) {
         console.error('Failed to load initial data:', err);
-        logout();
+        if (err instanceof Error && err.message === 'Unauthorized') {
+          logout();
+        }
       } finally {
         setLoading(false);
       }

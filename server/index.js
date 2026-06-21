@@ -15,10 +15,34 @@ const APP_PASSWORD = process.env.VITE_APP_PASSWORD || 'falguni03';
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection caching for serverless environments
+let cachedConnection = null;
+
+async function connectToDatabase() {
+  if (cachedConnection) {
+    return cachedConnection;
+  }
+  
+  if (mongoose.connection.readyState >= 1) {
+    cachedConnection = mongoose.connection;
+    return cachedConnection;
+  }
+  
+  cachedConnection = await mongoose.connect(MONGODB_URI);
+  console.log('MongoDB connected successfully');
+  return cachedConnection;
+}
+
+// Database connection middleware
+app.use(async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    res.status(500).json({ error: 'Database connection failed' });
+  }
+});
 
 // Schemas & Models
 const mealLogSchema = new mongoose.Schema({
