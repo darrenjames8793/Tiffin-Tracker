@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n \"Vite,Express\" -c \"blue,green\" \"vite\" \"node server/index.js\"",
+    "dev": "concurrently -n \"Vite,Express\" -c \"blue,green\" \"vite --host\" \"node server/index.js\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -13,6 +13,9 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
     "@base-ui/react": "^1.6.0",
+    "@radix-ui/react-checkbox": "^1.3.5",
+    "@radix-ui/react-label": "^2.1.10",
+    "@radix-ui/react-slot": "^1.3.0",
     "@tailwindcss/vite": "^4.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

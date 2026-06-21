@@ -1,7 +1,7 @@
 import type { Settings, MonthData } from './storage';
 
 const getHeaders = () => {
-  const token = localStorage.getItem('tiffin:auth_token') || '';
+  const token = localStorage.getItem('tiffin:auth_token') || sessionStorage.getItem('tiffin:auth_token') || '';
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`

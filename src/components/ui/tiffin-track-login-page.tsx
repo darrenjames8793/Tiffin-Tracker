@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Soup } from "lucide-react";
-import { login } from "./api";
+import { Eye, EyeOff, Mail, Soup } from "lucide-react";
 
-interface LoginProps {
-  onSuccess: () => void;
-}
+
 
 interface PupilProps {
   size?: number;
@@ -45,6 +44,7 @@ const Pupil = ({
   const calculatePupilPosition = () => {
     if (!pupilRef.current) return { x: 0, y: 0 };
 
+    // If forced look direction is provided, use that instead of mouse tracking
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY };
     }
@@ -80,6 +80,9 @@ const Pupil = ({
     />
   );
 };
+
+
+
 
 interface EyeBallProps {
   size?: number;
@@ -122,6 +125,7 @@ const EyeBall = ({
   const calculatePupilPosition = () => {
     if (!eyeRef.current) return { x: 0, y: 0 };
 
+    // If forced look direction is provided, use that instead of mouse tracking
     if (forceLookX !== undefined && forceLookY !== undefined) {
       return { x: forceLookX, y: forceLookY };
     }
@@ -170,14 +174,16 @@ const EyeBall = ({
   );
 };
 
-export default function Login({ onSuccess }: LoginProps) {
+
+
+
+
+function TiffinLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [remember, setRemember] = useState(true);
-  const [shake, setShake] = useState(false);
-  
   const [mouseX, setMouseX] = useState<number>(0);
   const [mouseY, setMouseY] = useState<number>(0);
   const [isSteelBlinking, setIsSteelBlinking] = useState(false);
@@ -185,252 +191,6 @@ export default function Login({ onSuccess }: LoginProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [isLookingAtEachOther, setIsLookingAtEachOther] = useState(false);
   const [isSteelPeeking, setIsSteelPeeking] = useState(false);
-  
-  // Bunny + Carrot Mobile Interaction
-  const [isMobile, setIsMobile] = useState(false);
-  const [assetsLoaded, setAssetsLoaded] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  
-  const [homePos, setHomePos] = useState({ x: 0, y: 0 });
-  const [bunnyPos, setBunnyPos] = useState({ x: 0, y: 0 });
-  const [pose, setPose] = useState<'idle' | 'hop' | 'chew'>('idle');
-  const [facingLeft, setFacingLeft] = useState(false);
-  const [activeCarrot, setActiveCarrot] = useState<{x: number, y: number} | null>(null);
-  const [carrotQueue, setCarrotQueue] = useState<{x: number, y: number}[]>([]);
-  const [eatProgress, setEatProgress] = useState<number>(0);
-  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
-
-  const HEALTH_MESSAGES = [
-    "Eat healthy food",
-    "Darren loves you ❤️",
-    "Drink water",
-    "Avoid Tea/Coffee",
-    "Eat Nuts",
-    "Eat Fruits"
-  ];
-
-  const stateRef = useRef<'idle' | 'hopping_to_carrot' | 'eating' | 'post_eating_wait' | 'hopping_home'>('idle');
-  const bunnyXRef = useRef(0);
-  const bunnyYRef = useRef(0);
-  const hopCycleRef = useRef(0);
-  const eatTimerRef = useRef<number | null>(null);
-  const messageCountRef = useRef<number>(0);
-  const lastMessageRef = useRef<string>("");
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    const handleLoad = () => setAssetsLoaded(true);
-    if (document.readyState === 'complete') {
-      setAssetsLoaded(true);
-    } else {
-      window.addEventListener('load', handleLoad);
-      return () => window.removeEventListener('load', handleLoad);
-    }
-  }, []);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
-
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const updateHome = () => {
-      const x = window.innerWidth / 2 - 45;
-      const y = window.innerHeight - 110;
-      setHomePos({ x, y });
-      
-      if (stateRef.current === 'idle') {
-        bunnyXRef.current = x;
-        bunnyYRef.current = y;
-        setBunnyPos({ x, y });
-      }
-    };
-    
-    updateHome();
-    window.addEventListener('resize', updateHome);
-    return () => window.removeEventListener('resize', updateHome);
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile || reducedMotion || homePos.x === 0) return;
-
-    let animId: number;
-    
-    const tick = () => {
-      const state = stateRef.current;
-      const speed = 4;
-      
-      if (state === 'idle') {
-        if (activeCarrot) {
-          stateRef.current = 'hopping_to_carrot';
-          setPose('hop');
-        } else {
-          bunnyXRef.current = homePos.x;
-          bunnyYRef.current = homePos.y;
-          setBunnyPos({ x: homePos.x, y: homePos.y });
-          setPose('idle');
-        }
-      } 
-      else if (state === 'hopping_to_carrot' && activeCarrot) {
-        const targetX = activeCarrot.x - 45;
-        const targetY = activeCarrot.y - 80;
-        
-        const dx = targetX - bunnyXRef.current;
-        const dy = targetY - bunnyYRef.current;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        setFacingLeft(dx < 0);
-        
-        if (dist < speed) {
-          bunnyXRef.current = targetX;
-          bunnyYRef.current = targetY;
-          setBunnyPos({ x: targetX, y: targetY });
-          
-          stateRef.current = 'eating';
-          setPose('chew');
-          
-          eatTimerRef.current = Date.now();
-        } else {
-          const angle = Math.atan2(dy, dx);
-          bunnyXRef.current += Math.cos(angle) * speed;
-          bunnyYRef.current += Math.sin(angle) * speed;
-          
-          hopCycleRef.current += 0.25;
-          const bounce = Math.abs(Math.sin(hopCycleRef.current)) * -18;
-          
-          setBunnyPos({ 
-            x: bunnyXRef.current, 
-            y: bunnyYRef.current + bounce 
-          });
-        }
-      } 
-      else if (state === 'eating') {
-        const elapsed = eatTimerRef.current ? Date.now() - eatTimerRef.current : 0;
-        if (elapsed > 1200) {
-          eatTimerRef.current = Date.now();
-          setActiveCarrot(null);
-          setEatProgress(0);
-          stateRef.current = 'post_eating_wait';
-          setPose('idle');
-          
-          // Trigger thought cloud message selection rules:
-          // 1. The first message must always be "Darren loves you ❤️"
-          // 2. Every 3rd message must be "Darren loves you ❤️"
-          // 3. Do not repeat the same message consecutively
-          const nextCount = messageCountRef.current + 1;
-          messageCountRef.current = nextCount;
-          
-          let randomMsg = "";
-          if (nextCount === 1 || nextCount % 3 === 0) {
-            randomMsg = "Darren loves you ❤️";
-          } else {
-            const candidates = HEALTH_MESSAGES.filter(msg => 
-              msg !== "Darren loves you ❤️" && msg !== lastMessageRef.current
-            );
-            if (candidates.length > 0) {
-              randomMsg = candidates[Math.floor(Math.random() * candidates.length)];
-            } else {
-              randomMsg = HEALTH_MESSAGES.find(msg => msg !== "Darren loves you ❤️") || "";
-            }
-          }
-          lastMessageRef.current = randomMsg;
-          setCloudMessage(randomMsg);
-        } else {
-          const progress = Math.min(3, Math.floor(elapsed / 300));
-          setEatProgress(progress);
-        }
-      }
-      else if (state === 'post_eating_wait') {
-        const elapsed = eatTimerRef.current ? Date.now() - eatTimerRef.current : 0;
-        if (elapsed > 2500) {
-          eatTimerRef.current = null;
-          setCloudMessage(null);
-          stateRef.current = 'hopping_home';
-          setPose('hop');
-        }
-      } 
-      else if (state === 'hopping_home') {
-        const targetX = homePos.x;
-        const targetY = homePos.y;
-        
-        const dx = targetX - bunnyXRef.current;
-        const dy = targetY - bunnyYRef.current;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        setFacingLeft(dx < 0);
-        
-        if (dist < speed) {
-          bunnyXRef.current = targetX;
-          bunnyYRef.current = targetY;
-          setBunnyPos({ x: targetX, y: targetY });
-          
-          stateRef.current = 'idle';
-          setPose('idle');
-          hopCycleRef.current = 0;
-        } else {
-          const angle = Math.atan2(dy, dx);
-          bunnyXRef.current += Math.cos(angle) * speed;
-          bunnyYRef.current += Math.sin(angle) * speed;
-          
-          hopCycleRef.current += 0.25;
-          const bounce = Math.abs(Math.sin(hopCycleRef.current)) * -18;
-          
-          setBunnyPos({ 
-            x: bunnyXRef.current, 
-            y: bunnyYRef.current + bounce 
-          });
-        }
-      }
-
-      animId = requestAnimationFrame(tick);
-    };
-
-    animId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animId);
-  }, [isMobile, reducedMotion, activeCarrot, homePos]);
-
-  useEffect(() => {
-    if (!isMobile || reducedMotion) return;
-    
-    if (!activeCarrot && carrotQueue.length > 0 && stateRef.current === 'idle') {
-      const [nextCarrot, ...remainingQueue] = carrotQueue;
-      setActiveCarrot(nextCarrot);
-      setCarrotQueue(remainingQueue);
-    }
-  }, [isMobile, reducedMotion, activeCarrot, carrotQueue]);
-
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (!isMobile || reducedMotion) return;
-
-    const target = e.target as HTMLElement;
-    if (
-      target.closest("input") || 
-      target.closest("button") || 
-      target.closest("label") || 
-      target.closest("[role='checkbox']")
-    ) {
-      return;
-    }
-
-    const x = e.clientX;
-    const y = e.clientY;
-
-    setCarrotQueue(prev => [...prev, { x, y }]);
-  };
-
   const steelRef = useRef<HTMLDivElement>(null);
   const maroonRef = useRef<HTMLDivElement>(null);
   const curryRef = useRef<HTMLDivElement>(null);
@@ -448,7 +208,7 @@ export default function Login({ onSuccess }: LoginProps) {
 
   // Blinking effect for steel-tin character
   useEffect(() => {
-    const getRandomBlinkInterval = () => Math.random() * 4000 + 3000;
+    const getRandomBlinkInterval = () => Math.random() * 4000 + 3000; // Random between 3-7 seconds
 
     const scheduleBlink = () => {
       const blinkTimeout = setTimeout(() => {
@@ -456,7 +216,7 @@ export default function Login({ onSuccess }: LoginProps) {
         setTimeout(() => {
           setIsSteelBlinking(false);
           scheduleBlink();
-        }, 150);
+        }, 150); // Blink duration 150ms
       }, getRandomBlinkInterval());
 
       return blinkTimeout;
@@ -468,7 +228,7 @@ export default function Login({ onSuccess }: LoginProps) {
 
   // Blinking effect for maroon-tin character
   useEffect(() => {
-    const getRandomBlinkInterval = () => Math.random() * 4000 + 3000;
+    const getRandomBlinkInterval = () => Math.random() * 4000 + 3000; // Random between 3-7 seconds
 
     const scheduleBlink = () => {
       const blinkTimeout = setTimeout(() => {
@@ -476,7 +236,7 @@ export default function Login({ onSuccess }: LoginProps) {
         setTimeout(() => {
           setIsMaroonBlinking(false);
           scheduleBlink();
-        }, 150);
+        }, 150); // Blink duration 150ms
       }, getRandomBlinkInterval());
 
       return blinkTimeout;
@@ -492,7 +252,7 @@ export default function Login({ onSuccess }: LoginProps) {
       setIsLookingAtEachOther(true);
       const timer = setTimeout(() => {
         setIsLookingAtEachOther(false);
-      }, 800);
+      }, 800); // Look at each other for 0.8 seconds, then back to tracking mouse
       return () => clearTimeout(timer);
     } else {
       setIsLookingAtEachOther(false);
@@ -507,8 +267,8 @@ export default function Login({ onSuccess }: LoginProps) {
           setIsSteelPeeking(true);
           setTimeout(() => {
             setIsSteelPeeking(false);
-          }, 800);
-        }, Math.random() * 3000 + 2000);
+          }, 800); // Peek for 800ms
+        }, Math.random() * 3000 + 2000); // Random peek every 2-5 seconds
         return peekInterval;
       };
 
@@ -520,17 +280,20 @@ export default function Login({ onSuccess }: LoginProps) {
   }, [password, showPassword, isSteelPeeking]);
 
   const calculatePosition = (ref: React.RefObject<HTMLDivElement | null>) => {
-    if (!ref.current) return { faceX: 0, faceY: 0, bodySkew: 0 };
+    if (!ref.current) return { faceX: 0, faceY: 0, bodyRotation: 0 };
 
     const rect = ref.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 3;
+    const centerY = rect.top + rect.height / 3; // Focus on head area
 
     const deltaX = mouseX - centerX;
     const deltaY = mouseY - centerY;
 
+    // Face movement (limited range)
     const faceX = Math.max(-15, Math.min(15, deltaX / 20));
     const faceY = Math.max(-10, Math.min(10, deltaY / 30));
+
+    // Body lean (skew for lean while keeping bottom straight) - negative to lean towards mouse
     const bodySkew = Math.max(-6, Math.min(6, -deltaX / 120));
 
     return { faceX, faceY, bodySkew };
@@ -543,40 +306,38 @@ export default function Login({ onSuccess }: LoginProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setError("");
     setIsLoading(true);
 
-    const result = await login(password);
-    setIsLoading(false);
+    // Simulate API delay (quick)
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    if (result.success) {
-      if (remember) {
-        localStorage.setItem('tiffin:auth', 'true');
-      } else {
-        sessionStorage.setItem('tiffin:auth', 'true');
-        const token = localStorage.getItem('tiffin:auth_token') || '';
-        sessionStorage.setItem('tiffin:auth_token', token);
-        localStorage.removeItem('tiffin:auth_token');
-        localStorage.removeItem('tiffin:auth');
-      }
-      onSuccess();
+    // Mock authentication - validate against dummy credentials
+    if (email === "priya@gmail.com" && password === "tiffin123") {
+      console.log("Login successful");
+      alert("Welcome back, Priya! Here's today's tiffin status.");
+      // In a real app, you would:
+      // - Store auth token
+      // - Redirect to today's tiffin status dashboard
+      // - Set user session
     } else {
-      setError(result.error || 'Incorrect password. Please try again.');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
+      setError("Invalid email or password. Please try again.");
+      console.log("Login failed");
     }
+
+    setIsLoading(false);
   };
 
   return (
-    <div onClick={handleBackgroundClick} className="h-screen overflow-y-auto lg:overflow-hidden grid lg:grid-cols-2 bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Content Section */}
-      <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-12 pb-0 text-white border-r border-slate-900 overflow-hidden h-full">
+      <div className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary/90 via-primary to-primary/80 p-12 text-primary-foreground">
         <div className="relative z-20">
           <div className="flex items-center gap-2 text-lg font-semibold">
-            <div className="size-8 rounded-lg bg-emerald-500/10 backdrop-blur-sm flex items-center justify-center border border-emerald-500/20">
-              <Soup className="size-4 text-emerald-400" />
+            <div className="size-8 rounded-lg bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center">
+              <Soup className="size-4" />
             </div>
-            <span className="text-white">Tiffin Tracker</span>
+            <span>Tiffin Tracker</span>
           </div>
         </div>
 
@@ -751,54 +512,75 @@ export default function Login({ onSuccess }: LoginProps) {
           </div>
         </div>
 
-
+        <div className="relative z-20 flex items-center gap-8 text-sm text-primary-foreground/60">
+          <a href="#" className="hover:text-primary-foreground transition-colors">
+            Privacy Policy
+          </a>
+          <a href="#" className="hover:text-primary-foreground transition-colors">
+            Terms of Service
+          </a>
+          <a href="#" className="hover:text-primary-foreground transition-colors">
+            Contact
+          </a>
+        </div>
 
         {/* Decorative elements */}
-        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:30px_30px]" />
-        <div className="absolute top-1/4 right-1/4 size-64 bg-emerald-500/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/4 left-1/4 size-96 bg-orange-500/5 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:20px_20px]" />
+        <div className="absolute top-1/4 right-1/4 size-64 bg-primary-foreground/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 size-96 bg-primary-foreground/5 rounded-full blur-3xl" />
       </div>
 
       {/* Right Login Section */}
-      <div className="flex items-center justify-center p-8 bg-slate-950">
-        <div className={`w-full max-w-[420px] transition-all ${shake ? 'animate-shake' : ''}`}>
+      <div className="flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-[420px]">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 text-lg font-semibold mb-12">
-            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-              <Soup className="size-4 text-emerald-400" />
+            <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Soup className="size-4 text-primary" />
             </div>
             <span>Tiffin Tracker</span>
           </div>
 
           {/* Header */}
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold tracking-tight mb-2 text-white" style={{ fontFamily: 'var(--font-display)' }}>Welcome back!</h1>
-            <p className="text-slate-400 text-sm">Sign in to track today's tiffin</p>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back!</h1>
+            <p className="text-muted-foreground text-sm">Sign in to track today's tiffin</p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2 text-left">
-              <Label htmlFor="password" className="text-sm font-medium text-slate-350">Enter Password</Label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="priya@gmail.com"
+                value={email}
+                autoComplete="off"
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => setIsTyping(true)}
+                onBlur={() => setIsTyping(false)}
+                required
+                className="h-12 bg-background border-border/60 focus:border-primary"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  onFocus={() => setIsTyping(true)}
-                  onBlur={() => setIsTyping(false)}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="h-12 pr-12 bg-slate-900 border-slate-800 text-white placeholder-slate-500 rounded-2xl focus:border-emerald-500 focus-visible:ring-emerald-500/20"
+                  className="h-12 pr-10 bg-background border-border/60 focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-200 transition-colors p-1 rounded cursor-pointer border-none bg-transparent"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="size-5" />
@@ -809,161 +591,63 @@ export default function Login({ onSuccess }: LoginProps) {
               </div>
             </div>
 
-            <div className="flex items-center text-left">
-              <div className="flex items-center space-x-2.5">
-                <Checkbox 
-                  id="remember" 
-                  checked={remember} 
-                  onCheckedChange={(checked) => setRemember(checked === true)}
-                  className="border-slate-700 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-white rounded-md"
-                />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember" />
                 <Label
                   htmlFor="remember"
-                  className="text-sm font-normal cursor-pointer text-slate-400 select-none"
+                  className="text-sm font-normal cursor-pointer"
                 >
                   Remember for 30 days
                 </Label>
               </div>
+              <a
+                href="#"
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                Forgot password?
+              </a>
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs font-semibold text-left pl-1 flex items-center gap-1.5 animate-fadeIn">
-                <span className="text-sm">⚠️</span> {error}
-              </p>
+              <div className="p-3 text-sm text-red-400 bg-red-950/20 border border-red-900/30 rounded-lg">
+                {error}
+              </div>
             )}
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base font-semibold bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-2xl py-3.5 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer border-none flex items-center justify-center gap-2"
+              className="w-full h-12 text-base font-medium" 
+              size="lg" 
               disabled={isLoading}
             >
-              {isLoading ? "Accessing..." : "Access Tracker"}
+              {isLoading ? "Signing in..." : "Log in"}
             </Button>
           </form>
-        </div>
-      </div>
 
-      {/* Bunny & Carrot Mobile Layer */}
-      {isMobile && assetsLoaded && (
-        <>
-          <style>{`
-            @keyframes bunny-breath {
-              0%, 100% { transform: scale(1); }
-              50% { transform: scale(1.05, 0.95); }
-            }
-            .animate-bunny-breath {
-              animation: bunny-breath 2s ease-in-out infinite;
-            }
-            @keyframes bounce-in {
-              0% { transform: scale(0); opacity: 0; }
-              65% { transform: scale(1.2); opacity: 1; }
-              100% { transform: scale(1); }
-            }
-            .animate-bounce-in {
-              animation: bounce-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            }
-            @keyframes fade-in-up {
-              0% { transform: translateY(10px) scale(0.9); opacity: 0; }
-              100% { transform: translateY(0) scale(1); opacity: 1; }
-            }
-            .animate-fade-in-up {
-              animation: fade-in-up 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            }
-          `}</style>
-
-          {activeCarrot && (
-            <div
-              style={{
-                position: 'fixed',
-                left: `${activeCarrot.x - 20}px`,
-                top: `${activeCarrot.y - 20}px`,
-                width: '40px',
-                height: '40px',
-                mixBlendMode: 'screen',
-                pointerEvents: 'none',
-                zIndex: 4,
-                clipPath: 
-                  stateRef.current === 'eating' 
-                    ? facingLeft
-                      ? `inset(0% ${eatProgress * 25}% 0% 0%)`
-                      : `inset(0% 0% 0% ${eatProgress * 25}%)`
-                    : 'inset(0% 0% 0% 0%)'
-              }}
-              className={stateRef.current !== 'eating' ? "animate-bounce-in" : ""}
+          {/* Social Login */}
+          <div className="mt-6">
+            <Button 
+              variant="outline" 
+              className="w-full h-12 bg-background border-border/60 hover:bg-accent"
+              type="button"
             >
-              <img 
-                src="/carrot.png" 
-                alt="Carrot" 
-                className="w-full h-full object-contain"
-                loading="lazy"
-              />
-            </div>
-          )}
-          
-          <div
-            style={{
-              position: 'fixed',
-              left: `${bunnyPos.x}px`,
-              top: `${bunnyPos.y}px`,
-              width: '90px',
-              height: '90px',
-              transform: `scaleX(${facingLeft ? -1 : 1})`,
-              mixBlendMode: 'screen',
-              pointerEvents: 'none',
-              zIndex: 5,
-            }}
-          >
-            <img
-              src={
-                pose === 'chew' 
-                  ? '/bunny_chew.png' 
-                  : pose === 'hop' 
-                    ? '/bunny_hop.png' 
-                    : '/bunny_idle.png'
-              }
-              alt="Bunny"
-              className={`w-full h-full object-contain ${
-                pose === 'idle' && !reducedMotion ? 'animate-bunny-breath' : ''
-              }`}
-              loading="lazy"
-            />
+              <Mail className="mr-2 size-5" />
+              Log in with Google
+            </Button>
           </div>
 
-          {cloudMessage && (() => {
-            const isCloudOnTop = bunnyPos.y - 45 > 15;
-            const cloudY = isCloudOnTop ? bunnyPos.y - 45 : bunnyPos.y + 75;
-            return (
-              <div
-                style={{
-                  position: 'fixed',
-                  left: `${bunnyPos.x - 5}px`,
-                  top: `${cloudY}px`,
-                  zIndex: 6,
-                }}
-                className="animate-fade-in-up"
-              >
-                <div className="relative bg-white text-slate-900 text-[10px] px-3 py-1.5 rounded-2xl border border-slate-300 shadow-lg font-medium whitespace-nowrap flex items-center justify-center">
-                  {cloudMessage}
-                  {/* Thought cloud bubbly indicators */}
-                  {isCloudOnTop ? (
-                    <>
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-white border border-slate-300" />
-                      <div className="absolute -bottom-3 left-[calc(50%-3px)] w-1.5 h-1.5 rounded-full bg-white border border-slate-300" />
-                      <div className="absolute -bottom-4 left-[calc(50%-4px)] w-1 h-1 rounded-full bg-white" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-white border border-slate-300" />
-                      <div className="absolute -top-3 left-[calc(50%-3px)] w-1.5 h-1.5 rounded-full bg-white border border-slate-300" />
-                      <div className="absolute -top-4 left-[calc(50%-4px)] w-1 h-1 rounded-full bg-white" />
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-        </>
-      )}
+          {/* Sign Up Link */}
+          <div className="text-center text-sm text-muted-foreground mt-8">
+            New to Tiffin Tracker?{" "}
+            <a href="#" className="text-foreground font-medium hover:underline">
+              Sign Up
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+export const Component = TiffinLoginPage;
