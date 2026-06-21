@@ -8,7 +8,7 @@ const getHeaders = () => {
   };
 };
 
-export async function login(password: string): Promise<boolean> {
+export async function login(password: string): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -19,12 +19,15 @@ export async function login(password: string): Promise<boolean> {
       const data = await res.json();
       localStorage.setItem('tiffin:auth_token', data.token);
       localStorage.setItem('tiffin:auth', 'true');
-      return true;
+      return { success: true };
+    } else {
+      const data = await res.json().catch(() => ({}));
+      return { success: false, error: data.error || 'Incorrect password. Please try again.' };
     }
   } catch (error) {
     console.error('Login request failed:', error);
+    return { success: false, error: 'Network error. Please check your connection.' };
   }
-  return false;
 }
 
 export async function fetchSettings(): Promise<Settings> {

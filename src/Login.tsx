@@ -10,21 +10,22 @@ interface LoginProps {
 export default function Login({ onSuccess }: LoginProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     
-    const success = await login(password);
+    const result = await login(password);
     setIsSubmitting(false);
     
-    if (success) {
+    if (result.success) {
       onSuccess();
     } else {
-      setError(true);
+      setError(result.error || 'Incorrect password. Please try again.');
       setShake(true);
       setTimeout(() => setShake(false), 500);
     }
@@ -61,7 +62,7 @@ export default function Login({ onSuccess }: LoginProps) {
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
-                  if (error) setError(false);
+                  if (error) setError(null);
                 }}
                 className={`w-full bg-slate-950/80 border text-slate-100 placeholder-slate-500 rounded-2xl pl-5 pr-12 py-3.5 h-[52px] text-base focus-visible:ring-2 focus-visible:ring-emerald-500/20 transition-all ${
                   error ? 'border-red-500/50 focus-visible:ring-red-500/10' : 'border-slate-800 hover:border-slate-700 focus:border-emerald-500'
@@ -93,7 +94,7 @@ export default function Login({ onSuccess }: LoginProps) {
             {/* Error Message */}
             {error && (
               <p className="text-red-400 text-xs font-semibold text-left pl-1 -mt-1 flex items-center gap-1.5 animate-fadeIn">
-                <span className="text-sm">⚠️</span> Incorrect password. Please try again.
+                <span className="text-sm">⚠️</span> {error}
               </p>
             )}
 
