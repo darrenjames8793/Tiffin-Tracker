@@ -41,12 +41,47 @@ mongoose.connect(MONGODB_URI, {
   console.log('MongoDB connected successfully');
   useLocalJsonDb = false;
 }).catch(err => {
-  console.warn('MongoDB connection failed, using local JSON DB:', err.message);
+  console.warn('MongoDB connection failed on startup, using local JSON DB:', err.message);
   useLocalJsonDb = true;
 });
 
-// Database connection middleware (non-blocking status check)
-app.use((req, res, next) => {
+// Database connection middleware (serverless friendly)
+app.use(async (req, res, next) => {
+  // If already connected, proceed immediately
+  if (mongoose.connection.readyState === 1) {
+    useLocalJsonDb = false;
+    return next();
+  }
+
+  // If connecting, wait for it to complete (up to 2 seconds)
+  if (mongoose.connection.readyState === 2) {
+    try {
+      await new Promise((resolve) => {
+        const check = setInterval(() => {
+          if (mongoose.connection.readyState !== 2) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 50);
+        setTimeout(() => {
+          clearInterval(check);
+          resolve();
+        }, 2000);
+      });
+    } catch (e) {}
+  }
+
+  // If still not connected, try to connect (e.g. serverless cold start)
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 2000
+      });
+    } catch (err) {
+      // Connect failed
+    }
+  }
+
   if (mongoose.connection.readyState === 1) {
     useLocalJsonDb = false;
   } else {
