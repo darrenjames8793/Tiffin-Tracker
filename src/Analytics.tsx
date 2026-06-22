@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { MONTH_NAMES, COST_PER_TIFFIN, getDaysInMonth, loadMonth, countTiffins, formatDate, DAY_FULL, type MonthData, type Settings } from './storage';
+import { MONTH_NAMES, COST_PER_TIFFIN, getDaysInMonth, loadMonth, countTiffins, formatDate, DAY_FULL, getDefaultMealsForDate, type MonthData, type Settings } from './storage';
 import { IconSun, IconMoon } from './App';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,9 @@ export default function Analytics({ viewYear, viewMonth, monthData, stats, total
     let weekNum = 1, count = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const key = formatDate(viewYear, viewMonth, d);
-      const data = monthData[key];
-      if (data) { if (data.lunch) count++; if (data.dinner) count++; }
+      const data = monthData[key] || getDefaultMealsForDate(key);
+      if (data.lunch) count++;
+      if (data.dinner) count++;
       if (new Date(viewYear, viewMonth, d).getDay() === 6 || d === daysInMonth) {
         weeks.push({ name: `Wk ${weekNum}`, tiffins: count }); weekNum++; count = 0;
       }
@@ -55,7 +56,7 @@ export default function Analytics({ viewYear, viewMonth, monthData, stats, total
     const maxDay = isCurrentMonth ? now.getDate() : daysInMonth;
     for (let d = 1; d <= maxDay; d++) {
       const key = formatDate(viewYear, viewMonth, d);
-      const data = monthData[key] || { lunch: false, dinner: false };
+      const data = monthData[key] || getDefaultMealsForDate(key);
       const dow = new Date(viewYear, viewMonth, d).getDay();
       if (!data.lunch) skipCount[dow]++;
       if (dow !== 0 && !data.dinner) skipCount[dow]++;

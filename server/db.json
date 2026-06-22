@@ -1,0 +1,100 @@
+{
+  "meals": {
+    "2026-06-01": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-02": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-03": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-04": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-05": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-06": {
+      "lunch": true,
+      "dinner": false
+    },
+    "2026-06-07": {
+      "lunch": true,
+      "dinner": false
+    },
+    "2026-06-08": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-09": {
+      "lunch": false,
+      "dinner": false
+    },
+    "2026-06-10": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-11": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-12": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-13": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-14": {
+      "lunch": true,
+      "dinner": false
+    },
+    "2026-06-15": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-16": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-17": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-18": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-19": {
+      "lunch": true,
+      "dinner": true
+    },
+    "2026-06-20": {
+      "lunch": false,
+      "dinner": false
+    },
+    "2026-06-21": {
+      "lunch": false,
+      "dinner": false
+    },
+    "2026-06-22": {
+      "lunch": false,
+      "dinner": false
+    },
+    "2026-06-23": {
+      "lunch": false,
+      "dinner": false
+    }
+  },
+  "settings": {
+    "key": "global",
+    "theme": "dark"
+  }
+}

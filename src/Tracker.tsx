@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MONTH_NAMES, DAY_NAMES, getDaysInMonth, getFirstDayOfWeek, isSunday, formatDate, type MonthData, type Settings } from './storage';
+import { MONTH_NAMES, DAY_NAMES, getDaysInMonth, getFirstDayOfWeek, isSunday, formatDate, getDefaultMealsForDate, type MonthData, type Settings } from './storage';
 import { IconSun, IconMoon } from './App';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,11 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
       day: parseInt(parts[2])
     };
   }, [selectedDate]);
+
+  const selectedData = useMemo(() => {
+    if (!selectedDate) return null;
+    return monthData[selectedDate] || getDefaultMealsForDate(selectedDate);
+  }, [selectedDate, monthData]);
 
   return (
     <div className="anim-up page-container">
@@ -135,7 +140,7 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
           {calendarDays.map((day, i) => {
             if (day === null) return <div key={`e${i}`} className="opacity-0" />;
             const dateStr = formatDate(viewYear, viewMonth, day);
-            const data = monthData[dateStr] || { lunch: false, dinner: false };
+            const data = monthData[dateStr] || getDefaultMealsForDate(dateStr);
             const sun = isSunday(viewYear, viewMonth, day);
             const isToday = isCurrentMonth && day === todayDate;
             const isFuture = isCurrentMonth && day > todayDate;
@@ -234,14 +239,14 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
             <div 
               onClick={() => toggleMeal(selectedDate, 'lunch')}
               className={`p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between cursor-pointer ${
-                (monthData[selectedDate]?.lunch)
+                (selectedData?.lunch)
                   ? 'bg-orange-500/10 border-orange-500/30' 
                   : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800/60'
               }`}
             >
               <div className="flex items-center gap-3">
                 <span className={`p-2.5 rounded-xl text-xl flex items-center justify-center ${
-                  (monthData[selectedDate]?.lunch)
+                  (selectedData?.lunch)
                     ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
                     : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 }`}>
@@ -250,15 +255,15 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
                 <div className="text-left">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Lunch</p>
                   <p className="text-xs text-slate-450 dark:text-slate-500 mt-0.5">
-                    {(monthData[selectedDate]?.lunch) ? 'Logged • ₹35' : 'Skipped • ₹0'}
+                    {(selectedData?.lunch) ? 'Logged • ₹35' : 'Skipped • ₹0'}
                   </p>
                 </div>
               </div>
               <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ${
-                (monthData[selectedDate]?.lunch) ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
+                (selectedData?.lunch) ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
               }`}>
                 <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ${
-                  (monthData[selectedDate]?.lunch) ? 'translate-x-5' : 'translate-x-0'
+                  (selectedData?.lunch) ? 'translate-x-5' : 'translate-x-0'
                 }`} />
               </div>
             </div>
@@ -275,7 +280,7 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
               className={`p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between ${
                 selectedDate.split('-')[0] && new Date(parseInt(selectedDate.split('-')[0]), parseInt(selectedDate.split('-')[1]) - 1, parseInt(selectedDate.split('-')[2])).getDay() === 0
                   ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-dashed border-slate-200 dark:border-slate-800'
-                  : 'cursor-pointer ' + ((monthData[selectedDate]?.dinner)
+                  : 'cursor-pointer ' + ((selectedData?.dinner)
                       ? 'bg-emerald-500/10 border-emerald-500/30' 
                       : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800/60')
               }`}
@@ -284,7 +289,7 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
                 <span className={`p-2.5 rounded-xl text-xl flex items-center justify-center ${
                   selectedDate.split('-')[0] && new Date(parseInt(selectedDate.split('-')[0]), parseInt(selectedDate.split('-')[1]) - 1, parseInt(selectedDate.split('-')[2])).getDay() === 0
                     ? 'bg-slate-200 dark:bg-slate-800 text-slate-400'
-                    : (monthData[selectedDate]?.dinner)
+                    : (selectedData?.dinner)
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 }`}>
@@ -295,16 +300,16 @@ export default function Tracker({ viewYear, viewMonth, monthData, now, toggleMea
                   <p className="text-xs text-slate-450 dark:text-slate-500 mt-0.5">
                     {selectedDate.split('-')[0] && new Date(parseInt(selectedDate.split('-')[0]), parseInt(selectedDate.split('-')[1]) - 1, parseInt(selectedDate.split('-')[2])).getDay() === 0
                       ? 'Sunday • No Dinner'
-                      : (monthData[selectedDate]?.dinner) ? 'Logged • ₹35' : 'Skipped • ₹0'}
+                      : (selectedData?.dinner) ? 'Logged • ₹35' : 'Skipped • ₹0'}
                   </p>
                 </div>
               </div>
               {!(selectedDate.split('-')[0] && new Date(parseInt(selectedDate.split('-')[0]), parseInt(selectedDate.split('-')[1]) - 1, parseInt(selectedDate.split('-')[2])).getDay() === 0) && (
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ${
-                  (monthData[selectedDate]?.dinner) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                  (selectedData?.dinner) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
                 }`}>
                   <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ${
-                    (monthData[selectedDate]?.dinner) ? 'translate-x-5' : 'translate-x-0'
+                    (selectedData?.dinner) ? 'translate-x-5' : 'translate-x-0'
                   }`} />
                 </div>
               )}

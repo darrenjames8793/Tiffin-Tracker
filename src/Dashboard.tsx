@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { MONTH_NAMES, COST_PER_TIFFIN, formatDate, type MonthData, type DayData, type Settings } from './storage';
+import { MONTH_NAMES, COST_PER_TIFFIN, formatDate, getDefaultMealsForDate, type MonthData, type DayData, type Settings } from './storage';
 import { IconSun, IconMoon } from './App';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -25,7 +25,7 @@ export default function Dashboard({ now, todayStr, todayData, todayIsSunday, tog
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const key = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-      const data = monthData[key] || { lunch: false, dinner: false };
+      const data = monthData[key] || getDefaultMealsForDate(key);
       const sun = d.getDay() === 0;
       days.push({ date: d, key, data, sun, dayLabel: ['S','M','T','W','T','F','S'][d.getDay()], dayNum: d.getDate() });
     }
@@ -38,7 +38,7 @@ export default function Dashboard({ now, todayStr, todayData, todayIsSunday, tog
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const key = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
-      const data = monthData[key] || { lunch: false, dinner: false };
+      const data = monthData[key] || getDefaultMealsForDate(key);
       const isSun = d.getDay() === 0;
       let cost = 0;
       if (data.lunch) cost += COST_PER_TIFFIN;

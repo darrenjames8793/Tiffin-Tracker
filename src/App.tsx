@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { COST_PER_TIFFIN, formatDate, countTiffins, maxPossibleTiffins, getDaysInMonth, type MonthData, type Settings } from './storage';
+import { COST_PER_TIFFIN, formatDate, countTiffins, maxPossibleTiffins, getDaysInMonth, getDefaultMealsForDate, type MonthData, type Settings } from './storage';
 import { fetchSettings, updateSettings, fetchMeals, saveMeal, syncLocalStorageToMongoDB } from './api';
 import Dashboard from './Dashboard';
 import Tracker from './Tracker';
@@ -117,29 +117,26 @@ export default function App() {
   }, [settings]);
 
   const toggleMeal = useCallback(async (dateStr: string, meal: 'lunch' | 'dinner') => {
-    let nextLunch = false;
-    let nextDinner = false;
+    const day = monthData[dateStr] || getDefaultMealsForDate(dateStr);
+    const nextLunch = meal === 'lunch' ? !day.lunch : day.lunch;
+    const nextDinner = meal === 'dinner' ? !day.dinner : day.dinner;
     
-    setMonthData(prev => {
-      const day = prev[dateStr] || { lunch: false, dinner: false };
-      nextLunch = meal === 'lunch' ? !day.lunch : day.lunch;
-      nextDinner = meal === 'dinner' ? !day.dinner : day.dinner;
-      
-      const updated = { ...prev, [dateStr]: { ...day, [meal]: !day[meal] } };
-      return updated;
-    });
+    setMonthData(prev => ({
+      ...prev,
+      [dateStr]: { lunch: nextLunch, dinner: nextDinner }
+    }));
     
     try {
       await saveMeal(dateStr, nextLunch, nextDinner);
     } catch (err) {
       console.error('Failed to save meal log:', err);
       // Rollback on failure
-      setMonthData(prev => {
-        const day = prev[dateStr] || { lunch: false, dinner: false };
-        return { ...prev, [dateStr]: { ...day, [meal]: !day[meal] } };
-      });
+      setMonthData(prev => ({
+        ...prev,
+        [dateStr]: day
+      }));
     }
-  }, []);
+  }, [monthData]);
 
   const stats = useMemo(() => countTiffins(monthData), [monthData]);
   const totalCost = stats.total * COST_PER_TIFFIN;
@@ -152,7 +149,7 @@ export default function App() {
   }, [stats, totalCost, viewYear, viewMonth]);
   const savings = Object.keys(monthData).length === 0 ? 0 : (maxTiffins * COST_PER_TIFFIN) - totalCost;
   const todayStr = formatDate(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayData = monthData[todayStr] || { lunch: false, dinner: false };
+  const todayData = monthData[todayStr] || getDefaultMealsForDate(todayStr);
   const todayIsSunday = now.getDay() === 0;
 
   const navMonth = (dir: -1 | 1) => {

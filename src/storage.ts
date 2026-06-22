@@ -67,3 +67,24 @@ export function maxPossibleTiffins(y: number, m: number): number {
 export const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 export const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 export const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+export function isFutureDate(dateStr: string): boolean {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return dateStr > todayStr;
+}
+
+export function getDefaultMealsForDate(dateStr: string): DayData {
+  if (isFutureDate(dateStr)) {
+    return { lunch: false, dinner: false };
+  }
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dayOfWeek = dateObj.getDay();
+  const isSun = dayOfWeek === 0;
+  return {
+    lunch: true,
+    dinner: !isSun
+  };
+}
+
