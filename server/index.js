@@ -33,6 +33,8 @@ app.use(express.json());
 
 // MongoDB connection and fallback flag
 let useLocalJsonDb = false;
+let lastConnectTime = 0;
+const CONNECT_COOLDOWN_MS = 60000; // 1 minute cooldown
 
 // Attempt to connect to MongoDB asynchronously on startup (non-blocking)
 mongoose.connect(MONGODB_URI, {
@@ -53,7 +55,7 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  // If connecting, wait for it to complete (up to 2 seconds)
+  // If connecting, wait for it to complete (up to 100ms instead of 2s)
   if (mongoose.connection.readyState === 2) {
     try {
       await new Promise((resolve) => {
@@ -62,31 +64,34 @@ app.use(async (req, res, next) => {
             clearInterval(check);
             resolve();
           }
-        }, 50);
+        }, 20);
         setTimeout(() => {
           clearInterval(check);
           resolve();
-        }, 2000);
+        }, 100);
       });
     } catch (e) {}
   }
 
-  // If still not connected, try to connect (e.g. serverless cold start)
-  if (mongoose.connection.readyState !== 1) {
-    try {
-      await mongoose.connect(MONGODB_URI, {
+  // If still not connected and not on cooldown, try to connect in background (non-blocking)
+  if (mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
+    const now = Date.now();
+    if (now - lastConnectTime > CONNECT_COOLDOWN_MS) {
+      lastConnectTime = now;
+      console.log('Attempting background MongoDB connection...');
+      mongoose.connect(MONGODB_URI, {
         serverSelectionTimeoutMS: 2000
+      }).then(() => {
+        console.log('MongoDB connected successfully in background');
+        useLocalJsonDb = false;
+      }).catch(err => {
+        console.warn('MongoDB background connection failed:', err.message);
+        useLocalJsonDb = true;
       });
-    } catch (err) {
-      // Connect failed
     }
   }
 
-  if (mongoose.connection.readyState === 1) {
-    useLocalJsonDb = false;
-  } else {
-    useLocalJsonDb = true;
-  }
+  useLocalJsonDb = (mongoose.connection.readyState !== 1);
   next();
 });
 
@@ -188,8 +193,7 @@ async function ensureDefaultsForMonth(year, month) {
   const m = Number(month); // 0-indexed month
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   
   let existingLogs = {};
   if (useLocalJsonDb) {
@@ -215,8 +219,8 @@ async function ensureDefaultsForMonth(year, month) {
     }
     
     if (!existingLogs[dateStr]) {
-      const dateObj = new Date(y, m, d);
-      const dayOfWeek = dateObj.getDay();
+      const dateObj = new Date(Date.UTC(y, m, d));
+      const dayOfWeek = dateObj.getUTCDay();
       const isSunday = dayOfWeek === 0;
       
       const defaultLunch = true;

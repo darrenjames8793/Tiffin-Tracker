@@ -24,7 +24,7 @@ export default function Analytics({ viewYear, viewMonth, monthData, stats, total
       const data = monthData[key] || getDefaultMealsForDate(key);
       if (data.lunch) count++;
       if (data.dinner) count++;
-      if (new Date(viewYear, viewMonth, d).getDay() === 6 || d === daysInMonth) {
+      if (new Date(Date.UTC(viewYear, viewMonth, d)).getUTCDay() === 6 || d === daysInMonth) {
         weeks.push({ name: `Wk ${weekNum}`, tiffins: count }); weekNum++; count = 0;
       }
     }
@@ -57,7 +57,7 @@ export default function Analytics({ viewYear, viewMonth, monthData, stats, total
     for (let d = 1; d <= maxDay; d++) {
       const key = formatDate(viewYear, viewMonth, d);
       const data = monthData[key] || getDefaultMealsForDate(key);
-      const dow = new Date(viewYear, viewMonth, d).getDay();
+      const dow = new Date(Date.UTC(viewYear, viewMonth, d)).getUTCDay();
       if (!data.lunch) skipCount[dow]++;
       if (dow !== 0 && !data.dinner) skipCount[dow]++;
     }

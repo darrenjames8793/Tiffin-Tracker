@@ -31,7 +31,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [searchVal, setSearchVal] = useState('');
 
-  const now = new Date();
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [monthData, setMonthData] = useState<MonthData>({});
@@ -64,16 +64,20 @@ export default function App() {
         return;
       }
       
+      setLoading(true);
       try {
-        const s = await fetchSettings();
+        const [s, meals] = await Promise.all([
+          fetchSettings(),
+          fetchMeals(viewYear, viewMonth)
+        ]);
         setSettings(s);
         document.documentElement.setAttribute('data-theme', s.theme);
-        
-        // Sync legacy localStorage data to MongoDB
-        await syncLocalStorageToMongoDB();
-        
-        const meals = await fetchMeals(viewYear, viewMonth);
         setMonthData(meals);
+        
+        // Sync legacy localStorage data to MongoDB in background
+        syncLocalStorageToMongoDB().catch(err => 
+          console.error('Background sync failed:', err)
+        );
       } catch (err) {
         console.error('Failed to load initial data:', err);
         if (err instanceof Error && err.message === 'Unauthorized') {

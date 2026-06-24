@@ -33,15 +33,15 @@ export function saveMonth(year: number, month: number, data: MonthData) {
 export const COST_PER_TIFFIN = 35;
 
 export function isSunday(y: number, m: number, d: number): boolean {
-  return new Date(y, m, d).getDay() === 0;
+  return new Date(Date.UTC(y, m, d)).getUTCDay() === 0;
 }
 
 export function getDaysInMonth(y: number, m: number): number {
-  return new Date(y, m + 1, 0).getDate();
+  return new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
 }
 
 export function getFirstDayOfWeek(y: number, m: number): number {
-  return new Date(y, m, 1).getDay();
+  return new Date(Date.UTC(y, m, 1)).getUTCDay();
 }
 
 export function formatDate(y: number, m: number, d: number): string {
@@ -69,8 +69,7 @@ export const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 export const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 export function isFutureDate(dateStr: string): boolean {
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   return dateStr > todayStr;
 }
 
@@ -79,8 +78,8 @@ export function getDefaultMealsForDate(dateStr: string): DayData {
     return { lunch: false, dinner: false };
   }
   const [y, m, d] = dateStr.split('-').map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  const dayOfWeek = dateObj.getDay();
+  const dateObj = new Date(Date.UTC(y, m - 1, d));
+  const dayOfWeek = dateObj.getUTCDay();
   const isSun = dayOfWeek === 0;
   return {
     lunch: true,

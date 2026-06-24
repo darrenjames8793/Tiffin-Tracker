@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -170,9 +170,27 @@ const EyeBall = ({
   );
 };
 
+const PASSWORD_PLACEHOLDERS = [
+  "Falguni, sip water.",
+  "Healthy bites, happy Falguni.",
+  "Drink water, glow daily.",
+  "Nourish yourself, Falguni.",
+  "Water first, always.",
+  "Eat fresh, shine.",
+  "Hydrate more, thrive.",
+  "Healthy choices, Falguni.",
+  "Care starts within.",
+  "Water, wellness, happiness."
+];
+
 export default function Login({ onSuccess }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
+  
+  const randomPlaceholder = useMemo(() => {
+    const idx = Math.floor(Math.random() * PASSWORD_PLACEHOLDERS.length);
+    return PASSWORD_PLACEHOLDERS[idx];
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [remember, setRemember] = useState(true);
@@ -784,7 +802,7 @@ export default function Login({ onSuccess }: LoginProps) {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={randomPlaceholder}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
