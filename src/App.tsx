@@ -172,8 +172,10 @@ export default function App() {
     const today = now.getDate();
     const daysInMonth = getDaysInMonth(viewYear, viewMonth);
     if (viewYear !== now.getFullYear() || viewMonth !== now.getMonth() || today === 0) return totalCost;
-    return Math.round((stats.total / today) * daysInMonth) * COST_PER_TIFFIN;
-  }, [stats, totalCost, viewYear, viewMonth]);
+    const projected = Math.round((stats.total / today) * daysInMonth) * COST_PER_TIFFIN;
+    const maxCost = maxTiffins * COST_PER_TIFFIN;
+    return Math.min(projected, maxCost);
+  }, [stats, totalCost, viewYear, viewMonth, maxTiffins]);
   const savings = Object.keys(currentMonthData).length === 0 ? 0 : (maxTiffins * COST_PER_TIFFIN) - totalCost;
   const todayStr = formatDate(now.getFullYear(), now.getMonth(), now.getDate());
   const todayData = monthData[todayStr] || getDefaultMealsForDate(todayStr);
