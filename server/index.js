@@ -49,50 +49,87 @@ mongoose.connect(MONGODB_URI, {
 
 // Database connection middleware (serverless friendly)
 app.use(async (req, res, next) => {
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
+
   // If already connected, proceed immediately
   if (mongoose.connection.readyState === 1) {
     useLocalJsonDb = false;
     return next();
   }
 
-  // If connecting, wait for it to complete (up to 100ms instead of 2s)
-  if (mongoose.connection.readyState === 2) {
+  if (isProduction) {
+    // Production/Vercel serverless: Must block and await connection to prevent silent data loss on ephemeral filesystem
     try {
-      await new Promise((resolve) => {
+      if (mongoose.connection.readyState !== 2) {
+        mongoose.connect(MONGODB_URI, {
+          serverSelectionTimeoutMS: 5000
+        });
+      }
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          clearInterval(check);
+          reject(new Error('MongoDB connection timeout'));
+        }, 5000);
+
         const check = setInterval(() => {
-          if (mongoose.connection.readyState !== 2) {
+          if (mongoose.connection.readyState === 1) {
+            clearInterval(check);
+            clearTimeout(timeout);
+            resolve();
+          } else if (mongoose.connection.readyState !== 2) {
+            clearInterval(check);
+            clearTimeout(timeout);
+            reject(new Error('MongoDB connection failed'));
+          }
+        }, 50);
+      });
+
+      useLocalJsonDb = false;
+      return next();
+    } catch (err) {
+      console.error('Production MongoDB connection failed:', err.message);
+      return res.status(500).json({ error: 'Database connection failed. Please try again.' });
+    }
+  } else {
+    // Development/Local: Fast non-blocking fallback to JSON DB to avoid slow load times if MongoDB is offline
+    if (mongoose.connection.readyState === 2) {
+      try {
+        await new Promise((resolve) => {
+          const check = setInterval(() => {
+            if (mongoose.connection.readyState !== 2) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 20);
+          setTimeout(() => {
             clearInterval(check);
             resolve();
-          }
-        }, 20);
-        setTimeout(() => {
-          clearInterval(check);
-          resolve();
-        }, 100);
-      });
-    } catch (e) {}
-  }
-
-  // If still not connected and not on cooldown, try to connect in background (non-blocking)
-  if (mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
-    const now = Date.now();
-    if (now - lastConnectTime > CONNECT_COOLDOWN_MS) {
-      lastConnectTime = now;
-      console.log('Attempting background MongoDB connection...');
-      mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 2000
-      }).then(() => {
-        console.log('MongoDB connected successfully in background');
-        useLocalJsonDb = false;
-      }).catch(err => {
-        console.warn('MongoDB background connection failed:', err.message);
-        useLocalJsonDb = true;
-      });
+          }, 100);
+        });
+      } catch (e) {}
     }
-  }
 
-  useLocalJsonDb = (mongoose.connection.readyState !== 1);
-  next();
+    if (mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
+      const now = Date.now();
+      if (now - lastConnectTime > CONNECT_COOLDOWN_MS) {
+        lastConnectTime = now;
+        console.log('Attempting background MongoDB connection...');
+        mongoose.connect(MONGODB_URI, {
+          serverSelectionTimeoutMS: 2000
+        }).then(() => {
+          console.log('MongoDB connected successfully in background');
+          useLocalJsonDb = false;
+        }).catch(err => {
+          console.warn('MongoDB background connection failed:', err.message);
+          useLocalJsonDb = true;
+        });
+      }
+    }
+
+    useLocalJsonDb = (mongoose.connection.readyState !== 1);
+    return next();
+  }
 });
 
 // Schemas & Models
