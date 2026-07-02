@@ -66,12 +66,22 @@ export default function App() {
       
       setLoading(true);
       try {
+        const needsPrevMonth = now.getDate() < 7;
         const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const [s, currentMeals, prevMeals] = await Promise.all([
+        
+        const promises: Promise<any>[] = [
           fetchSettings(),
-          fetchMeals(now.getFullYear(), now.getMonth()),
-          fetchMeals(prevMonthDate.getFullYear(), prevMonthDate.getMonth())
-        ]);
+          fetchMeals(now.getFullYear(), now.getMonth())
+        ];
+        if (needsPrevMonth) {
+          promises.push(fetchMeals(prevMonthDate.getFullYear(), prevMonthDate.getMonth()));
+        }
+        
+        const results = await Promise.all(promises);
+        const s = results[0];
+        const currentMeals = results[1];
+        const prevMeals = needsPrevMonth ? results[2] : {};
+        
         setSettings(s);
         document.documentElement.setAttribute('data-theme', s.theme);
         setMonthData({ ...prevMeals, ...currentMeals });
@@ -100,7 +110,9 @@ export default function App() {
     async function loadMealsForMonth() {
       try {
         const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
-        if (isCurrentMonth) {
+        const needsPrevMonth = isCurrentMonth && now.getDate() < 7;
+        
+        if (needsPrevMonth) {
           const prevMonthDate = new Date(viewYear, viewMonth - 1, 1);
           const [currentMeals, prevMeals] = await Promise.all([
             fetchMeals(viewYear, viewMonth),

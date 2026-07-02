@@ -35,17 +35,20 @@ app.use(express.json());
 let useLocalJsonDb = false;
 let lastConnectTime = 0;
 const CONNECT_COOLDOWN_MS = 60000; // 1 minute cooldown
+let cachedDbPromise = null;
 
-// Attempt to connect to MongoDB asynchronously on startup (non-blocking)
-mongoose.connect(MONGODB_URI, {
-  serverSelectionTimeoutMS: 2000
-}).then(() => {
-  console.log('MongoDB connected successfully');
-  useLocalJsonDb = false;
-}).catch(err => {
-  console.warn('MongoDB connection failed on startup, using local JSON DB:', err.message);
-  useLocalJsonDb = true;
-});
+// Attempt to connect to MongoDB asynchronously on startup (non-blocking, dev/local only)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 2000
+  }).then(() => {
+    console.log('MongoDB connected successfully');
+    useLocalJsonDb = false;
+  }).catch(err => {
+    console.warn('MongoDB connection failed on startup, using local JSON DB:', err.message);
+    useLocalJsonDb = true;
+  });
+}
 
 // Database connection middleware (serverless friendly)
 app.use(async (req, res, next) => {
@@ -60,34 +63,17 @@ app.use(async (req, res, next) => {
   if (isProduction) {
     // Production/Vercel serverless: Must block and await connection to prevent silent data loss on ephemeral filesystem
     try {
-      if (mongoose.connection.readyState !== 2) {
-        mongoose.connect(MONGODB_URI, {
+      if (!cachedDbPromise) {
+        console.log('Connecting to MongoDB (Production/Serverless)...');
+        cachedDbPromise = mongoose.connect(MONGODB_URI, {
           serverSelectionTimeoutMS: 5000
         });
       }
-
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          clearInterval(check);
-          reject(new Error('MongoDB connection timeout'));
-        }, 5000);
-
-        const check = setInterval(() => {
-          if (mongoose.connection.readyState === 1) {
-            clearInterval(check);
-            clearTimeout(timeout);
-            resolve();
-          } else if (mongoose.connection.readyState !== 2) {
-            clearInterval(check);
-            clearTimeout(timeout);
-            reject(new Error('MongoDB connection failed'));
-          }
-        }, 50);
-      });
-
+      await cachedDbPromise;
       useLocalJsonDb = false;
       return next();
     } catch (err) {
+      cachedDbPromise = null; // Reset cached promise on failure to allow retry
       console.error('Production MongoDB connection failed:', err.message);
       return res.status(500).json({ error: 'Database connection failed. Please try again.' });
     }
