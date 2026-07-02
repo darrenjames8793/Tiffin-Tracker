@@ -66,13 +66,15 @@ export default function App() {
       
       setLoading(true);
       try {
-        const [s, meals] = await Promise.all([
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const [s, currentMeals, prevMeals] = await Promise.all([
           fetchSettings(),
-          fetchMeals(viewYear, viewMonth)
+          fetchMeals(now.getFullYear(), now.getMonth()),
+          fetchMeals(prevMonthDate.getFullYear(), prevMonthDate.getMonth())
         ]);
         setSettings(s);
         document.documentElement.setAttribute('data-theme', s.theme);
-        setMonthData(meals);
+        setMonthData({ ...prevMeals, ...currentMeals });
         
         // Sync legacy localStorage data to MongoDB in background
         syncLocalStorageToMongoDB().catch(err => 
@@ -97,8 +99,18 @@ export default function App() {
     
     async function loadMealsForMonth() {
       try {
-        const meals = await fetchMeals(viewYear, viewMonth);
-        setMonthData(meals);
+        const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
+        if (isCurrentMonth) {
+          const prevMonthDate = new Date(viewYear, viewMonth - 1, 1);
+          const [currentMeals, prevMeals] = await Promise.all([
+            fetchMeals(viewYear, viewMonth),
+            fetchMeals(prevMonthDate.getFullYear(), prevMonthDate.getMonth())
+          ]);
+          setMonthData({ ...prevMeals, ...currentMeals });
+        } else {
+          const meals = await fetchMeals(viewYear, viewMonth);
+          setMonthData(meals);
+        }
       } catch (err) {
         console.error('Failed to fetch meals:', err);
       }
@@ -142,7 +154,18 @@ export default function App() {
     }
   }, [monthData]);
 
-  const stats = useMemo(() => countTiffins(monthData), [monthData]);
+  const currentMonthData = useMemo(() => {
+    const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
+    const filtered: MonthData = {};
+    for (const [date, data] of Object.entries(monthData)) {
+      if (date.startsWith(prefix)) {
+        filtered[date] = data;
+      }
+    }
+    return filtered;
+  }, [monthData, viewYear, viewMonth]);
+
+  const stats = useMemo(() => countTiffins(currentMonthData), [currentMonthData]);
   const totalCost = stats.total * COST_PER_TIFFIN;
   const maxTiffins = useMemo(() => maxPossibleTiffins(viewYear, viewMonth), [viewYear, viewMonth]);
   const projectedCost = useMemo(() => {
@@ -151,7 +174,7 @@ export default function App() {
     if (viewYear !== now.getFullYear() || viewMonth !== now.getMonth() || today === 0) return totalCost;
     return Math.round((stats.total / today) * daysInMonth) * COST_PER_TIFFIN;
   }, [stats, totalCost, viewYear, viewMonth]);
-  const savings = Object.keys(monthData).length === 0 ? 0 : (maxTiffins * COST_PER_TIFFIN) - totalCost;
+  const savings = Object.keys(currentMonthData).length === 0 ? 0 : (maxTiffins * COST_PER_TIFFIN) - totalCost;
   const todayStr = formatDate(now.getFullYear(), now.getMonth(), now.getDate());
   const todayData = monthData[todayStr] || getDefaultMealsForDate(todayStr);
   const todayIsSunday = now.getDay() === 0;

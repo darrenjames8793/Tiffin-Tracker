@@ -195,20 +195,23 @@ async function ensureDefaultsForMonth(year, month) {
   
   const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   
-  let existingLogs = {};
+  const monthData = {};
+  const prefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
+
   if (useLocalJsonDb) {
     const db = readLocalDb();
-    existingLogs = db.meals || {};
+    const meals = db.meals || {};
+    Object.keys(meals).forEach(date => {
+      if (date.startsWith(prefix)) {
+        monthData[date] = { lunch: meals[date].lunch, dinner: meals[date].dinner };
+      }
+    });
   } else {
-    const prefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
     const logs = await MealLog.find({ date: new RegExp(`^${prefix}`) });
     logs.forEach(log => {
-      existingLogs[log.date] = { lunch: log.lunch, dinner: log.dinner };
+      monthData[log.date] = { lunch: log.lunch, dinner: log.dinner };
     });
   }
-  
-  let dbChanged = false;
-  const dbUpdates = [];
   
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -218,7 +221,7 @@ async function ensureDefaultsForMonth(year, month) {
       continue;
     }
     
-    if (!existingLogs[dateStr]) {
+    if (!monthData[dateStr]) {
       const dateObj = new Date(Date.UTC(y, m, d));
       const dayOfWeek = dateObj.getUTCDay();
       const isSunday = dayOfWeek === 0;
@@ -226,37 +229,9 @@ async function ensureDefaultsForMonth(year, month) {
       const defaultLunch = true;
       const defaultDinner = !isSunday;
       
-      existingLogs[dateStr] = { lunch: defaultLunch, dinner: defaultDinner };
-      
-      if (useLocalJsonDb) {
-        dbChanged = true;
-      } else {
-        dbUpdates.push(
-          MealLog.findOneAndUpdate(
-            { date: dateStr },
-            { lunch: defaultLunch, dinner: defaultDinner },
-            { upsert: true, new: true }
-          )
-        );
-      }
+      monthData[dateStr] = { lunch: defaultLunch, dinner: defaultDinner };
     }
   }
-  
-  if (useLocalJsonDb && dbChanged) {
-    const db = readLocalDb();
-    db.meals = { ...db.meals, ...existingLogs };
-    writeLocalDb(db);
-  } else if (!useLocalJsonDb && dbUpdates.length > 0) {
-    await Promise.all(dbUpdates);
-  }
-  
-  const monthData = {};
-  const prefix = `${y}-${String(m + 1).padStart(2, '0')}-`;
-  Object.keys(existingLogs).forEach(date => {
-    if (date.startsWith(prefix)) {
-      monthData[date] = existingLogs[date];
-    }
-  });
   
   return monthData;
 }
